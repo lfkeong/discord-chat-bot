@@ -2,9 +2,9 @@
 # Quick SSH connection script for EC2 trading bot instance
 
 # EC2 instance details
-EC2_IP="13.212.18.190"
+EC2_IP="18.138.236.195"
 EC2_USER="ubuntu"
-KEY_FILE="./discord-test-bot.pem"
+KEY_FILE="./discord-chat-bot.pem"
 
 # Check if key file exists
 if [ ! -f "$KEY_FILE" ]; then
