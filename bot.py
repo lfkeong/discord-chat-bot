@@ -143,11 +143,6 @@ class UnlockView(discord.ui.View):
             if image_url:
                 embed.set_image(url=image_url)
             
-            # Add custom secret content if provided
-            custom_content = trade_data.get("secret_content")
-            if custom_content:
-                embed.add_field(name="", value=f"\n{custom_content}", inline=False)
-            
             # Send ephemeral message with same format
             await interaction.response.send_message(
                 content=user_mention,
@@ -170,7 +165,7 @@ class UnlockView(discord.ui.View):
 class MyBot(discord.Client):
     def __init__(self):
         intents = discord.Intents.default()
-        intents.message_content = True  # Required to read message content
+        intents.message_content = True
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
 
@@ -183,139 +178,20 @@ class MyBot(discord.Client):
         else:
             await self.tree.sync()
 
-    # Example: Respond to regular messages (not slash commands)
-    async def on_message(self, message: discord.Message):
-        # Ignore messages from bots to prevent loops
-        if message.author.bot:
-            return
-        
-        # Example: Echo messages that start with "!echo"
-        if message.content.startswith("!echo "):
-            text = message.content[6:]  # Remove "!echo " prefix
-            await message.channel.send(f"Echo: {text}")
-        
-        # Example: Reply to a message
-        if message.content.startswith("!reply"):
-            await message.reply("This is a reply to your message!")
-        
-        # Example: Send a message in the same channel
-        if message.content.startswith("!hello"):
-            await message.channel.send(f"Hello, {message.author.mention}!")
-
 
 bot = MyBot()
 
 
-@bot.tree.command(name="lock", description="Post an unlock button that reveals content ephemerally.")
-@app_commands.describe(secret="The content to reveal when the button is pressed")
-async def lock_cmd(interaction: discord.Interaction, secret: str):
-    # 1) Send the locked message with the button view
-    # We need the message id, so we respond first, then fetch the sent message.
-    await interaction.response.send_message(
-        "Press the button to unlock the content...",
-        ephemeral=False
-    )
-
-    locked_message = await interaction.original_response()
-
-    # 2) Store the secret keyed by the locked message id
-    SECRET_STORE[locked_message.id] = secret
-
-    # 3) Edit the message to add the button view, now that we know message id
-    view = UnlockView(locked_message_id=locked_message.id, timeout=None)
-    await locked_message.edit(view=view)
-
-
-@bot.tree.command(name="lock_embed", description="Lock a trade-style embed with unlock button.")
-@app_commands.describe(
-    symbol="e.g. BTC",
-    entry="e.g. 93022",
-    sl="e.g. 93280",
-    note="Optional note"
-)
-async def lock_embed_cmd(interaction: discord.Interaction, symbol: str, entry: str, sl: str, note: Optional[str] = None):
-    # Build a nice “locked” embed preview (public), but hide the real content in secret store
-    preview = discord.Embed(
-        title="🔒 Locked Trade",
-        description=f"**{symbol.upper()}** | **Entry:** {entry} | **SL:** {sl}\n\nPress the button to unlock the content…",
-        color=discord.Color.blurple(),
-        timestamp=discord.utils.utcnow()
-    )
-    if note:
-        preview.add_field(name="Note", value=note, inline=False)
-
-    await interaction.response.send_message(embed=preview)
-    locked_message = await interaction.original_response()
-
-    # Secret content that only the clicker sees (ephemeral)
-    secret = (
-        f"**{symbol.upper()}**\n"
-        f"• Entry: {entry}\n"
-        f"• SL: {sl}\n"
-        f"{('• ' + note) if note else ''}\n\n"
-        f"⚠️ Disclaimer: Trade responsibly."
-    )
-    SECRET_STORE[locked_message.id] = secret
-
-    view = UnlockView(locked_message_id=locked_message.id, timeout=None)
-    await locked_message.edit(view=view)
-
-
-# Example: Simple text message
-@bot.tree.command(name="say", description="Send a simple text message.")
-@app_commands.describe(text="The message to send")
-async def say_cmd(interaction: discord.Interaction, text: str):
-    await interaction.response.send_message(text)
-
-
-# Example: Message with embed
-@bot.tree.command(name="embed", description="Send a message with an embed.")
-@app_commands.describe(title="Embed title", description="Embed description", color="Color name (red, green, blue, etc.)")
-async def embed_cmd(interaction: discord.Interaction, title: str, description: str, color: Optional[str] = None):
-    # Map color names to Discord colors
-    color_map = {
-        "red": discord.Color.red(),
-        "green": discord.Color.green(),
-        "blue": discord.Color.blue(),
-        "yellow": discord.Color.gold(),
-        "purple": discord.Color.purple(),
-        "orange": discord.Color.orange(),
-    }
-    embed_color = color_map.get(color.lower() if color else None, discord.Color.blurple())
-    
-    embed = discord.Embed(
-        title=title,
-        description=description,
-        color=embed_color,
-        timestamp=discord.utils.utcnow()
-    )
-    embed.set_footer(text=f"Requested by {interaction.user.display_name}")
-    
-    await interaction.response.send_message(embed=embed)
-
-
-# Example: Send message to a specific channel
-@bot.tree.command(name="send_to_channel", description="Send a message to a specific channel.")
-@app_commands.describe(channel="The channel to send to", message="The message to send")
-async def send_to_channel_cmd(interaction: discord.Interaction, channel: discord.TextChannel, message: str):
-    # Send message to the specified channel
-    await channel.send(message)
-    # Confirm to the user
-    await interaction.response.send_message(f"✅ Message sent to {channel.mention}!", ephemeral=True)
-
-
-# Trade ephemeral message command (matches the HTML structure you provided)
+# Trade ephemeral message command
 @bot.tree.command(name="trade_ephemeral", description="Send an ephemeral trade message with embed, image, unlock button, and mention.")
 @app_commands.describe(
     user="User to mention",
     symbol="Trading symbol (e.g., XMR, BTC)",
     entry="Entry price",
     sl="Stop loss price",
-    secret_content="Additional content to reveal when unlock button is clicked (optional)",
-    emoji="Custom emoji (optional, can be emoji name or ID)",
     image_url="Image URL (optional)",
     status="Status text (e.g., 'Stopped', 'Active')",
-    reply_to_message="Message ID to reply to (optional)"
+    order_type='Order type: "BUY" or "SELL" (controls emoji: :Long: or :Short:)'
 )
 async def trade_ephemeral_cmd(
     interaction: discord.Interaction,
@@ -323,11 +199,9 @@ async def trade_ephemeral_cmd(
     symbol: str,
     entry: str,
     sl: str,
-    secret_content: Optional[str] = None,
-    emoji: Optional[str] = None,
     image_url: Optional[str] = None,
     status: Optional[str] = None,
-    reply_to_message: Optional[str] = None
+    order_type: str = "BUY",
 ):
     # Calculate percentage (assuming it's based on entry and SL)
     try:
@@ -338,30 +212,25 @@ async def trade_ephemeral_cmd(
     except:
         percentage_text = ""
     
+    # Normalize and validate order type
+    order_type_normalized = order_type.upper()
+    if order_type_normalized not in ("BUY", "SELL"):
+        await interaction.response.send_message(
+            'Invalid order type. Please use "BUY" or "SELL".',
+            ephemeral=True
+        )
+        return
+
+    # Map order type to emoji label
+    # Assumes your Discord server has emojis named :Long: and :Short:
+    emoji = ":Long:" if order_type_normalized == "BUY" else ":Short:"
+
     # Build embed description
     description_parts = []
-    
-    # Add emoji if provided
-    if emoji:
-        # Try to parse as custom emoji (format: name:id or just id)
-        if ':' in emoji:
-            # Format: emoji_name:emoji_id
-            parts = emoji.split(':')
-            if len(parts) == 2:
-                emoji_str = f"<:{parts[0]}:{parts[1]}>"
-            else:
-                emoji_str = emoji
-        else:
-            # Try as emoji ID or use as Unicode emoji
-            try:
-                emoji_id = int(emoji)
-                # For custom emoji, we need the name too - use symbol as fallback
-                emoji_str = f"<:{symbol}:{emoji_id}>"
-            except:
-                # Use as Unicode emoji or emoji name
-                emoji_str = emoji
-        description_parts.append(emoji_str)
-        description_parts.append(" ")
+
+    # Add emoji representing order type
+    description_parts.append(emoji)
+    description_parts.append(" ")
     
     # Add symbol and prices
     description_parts.append(f"**{symbol.upper()}**")
@@ -400,16 +269,6 @@ async def trade_ephemeral_cmd(
     # Build message content with mention
     content = f"{user.mention}"
     
-    # Note: For ephemeral messages, we can't directly reply to another message
-    # But if reply_to_message is provided, we can add a reference in the embed
-    if reply_to_message:
-        try:
-            message_id = int(reply_to_message)
-            # Add a note about replying (though ephemeral messages are private)
-            embed.insert_field_at(0, name="", value=f"*Reference: Message {reply_to_message}*", inline=False)
-        except:
-            pass
-    
     # Prepare secret content for unlock button
     # Store full trade data so we can recreate the same format when unlocked
     trade_data = {
@@ -422,7 +281,7 @@ async def trade_ephemeral_cmd(
         "emoji": emoji,
         "image_url": image_url,
         "status": status_text,
-        "secret_content": secret_content  # Optional custom content
+        "order_type": order_type_normalized,
     }
     
     # Use interaction ID as unique identifier for ephemeral messages
