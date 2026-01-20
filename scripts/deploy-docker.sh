@@ -23,8 +23,8 @@ EC2_IP="18.138.236.195"
 EC2_USER="ubuntu"
 KEY_FILE="./discord-chat-bot.pem"          # path relative to project root
 REPO_DIR="/home/ubuntu/discord-chat-bot"   # directory on EC2 where repo is cloned
-DOCKER_IMAGE_NAME="discord-bot"
-DOCKER_CONTAINER_NAME="discord-bot"
+DOCKER_IMAGE_NAME="discord-chat-bot"
+DOCKER_CONTAINER_NAME="discord-chat-bot"
 GIT_BRANCH="main"                          # change if you use a different branch
 # -------------------
 

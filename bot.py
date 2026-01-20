@@ -170,13 +170,14 @@ class MyBot(discord.Client):
         self.tree = app_commands.CommandTree(self)
 
     async def setup_hook(self):
+        await self.tree.sync()
         # Sync commands to a specific guild for fast update (recommended for dev)
-        if GUILD_ID:
-            guild = discord.Object(id=GUILD_ID)
-            self.tree.copy_global_to(guild=guild)
-            await self.tree.sync(guild=guild)
-        else:
-            await self.tree.sync()
+        # if GUILD_ID:
+        #     guild = discord.Object(id=GUILD_ID)
+        #     self.tree.copy_global_to(guild=guild)
+        #     await self.tree.sync(guild=guild)
+        # else:
+        #     await self.tree.sync()
 
 
 bot = MyBot()
