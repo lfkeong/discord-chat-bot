@@ -608,7 +608,7 @@ async def trade_ephemeral_cmd(
         await interaction.response.send_message(
             content=f"{user.mention} Press the button to unlock the content...",
             view=unlock_view,
-            ephemeral=True
+            ephemeral=False
         )
         
     except ValueError as e:
